@@ -22,6 +22,7 @@ import argparse
 import ConfigParser
 import copy
 import os
+import sys
 import re
 from time import time
 import requests
@@ -211,15 +212,15 @@ class ForemanInventory(object):
                     except yaml.YAMLError, exc:
                         if hasattr(exc, 'problem_mark'):
                             mark = exc.problem_mark
-                            print "Error parsing %s at position: (%s:%s)" % (name, mark.line+1, mark.column+1)
+                            print >> sys.stderr, "Error parsing %s at position: (%s:%s)" % (name, mark.line+1, mark.column+1)
                         else:
-                            print "Error parsing %s:\n%s" % (name, exc)
+                            print >> sys.stderr, "Error parsing %s:\n%s" % (name, exc)
                         params[name] = m.group(2)
                 elif m.group(1) == self.foreman_prefix_json:
                     try:
                         params[name] = json.loads(m.group(2))
                     except ValueError, exc:
-                        print "Error parsing %s:\n%s" % (name, exc)
+                        print >> sys.stderr, "Error parsing %s:\n%s" % (name, exc)
                         params[name] = m.group(2)
 
         return params
