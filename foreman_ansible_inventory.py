@@ -32,6 +32,8 @@ try:
 except ImportError:
     import simplejson as json
 
+import yaml
+
 
 class ForemanInventory(object):
     def __init__(self):
@@ -107,6 +109,10 @@ class ForemanInventory(object):
         self.foreman_user = config.get('foreman', 'user')
         self.foreman_pw = config.get('foreman', 'password')
         self.foreman_ssl_verify = config.getboolean('foreman', 'ssl_verify')
+        try:
+            self.foreman_complextypes = config.getboolean('foreman', 'complex_types')
+        except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+            self.foreman_complextypes = False
 
         # Ansible related
         try:
@@ -190,7 +196,20 @@ class ForemanInventory(object):
 
         for param in self._get_all_params_by_id(host['id']):
             name = param['name']
-            params[name] = param['value']
+
+            if self.foreman_complextypes:
+                # Try YAML
+                try:
+                    params[name] = yaml.load(param['value'])
+                except yaml.YAMLError:
+                    # Not YAML, try JSON
+                    try:
+                        params[name] = json.loads(param['value'])
+                    except ValueError:
+                        # Not YAML or JSON, return plain string
+                        params[name] = param['value']
+            else:
+                params[name] = param['value']
 
         return params
 
