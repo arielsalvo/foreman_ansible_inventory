@@ -22,6 +22,7 @@ import argparse
 import ConfigParser
 import copy
 import os
+import sys
 import re
 from time import time
 import requests
@@ -31,6 +32,8 @@ try:
     import json
 except ImportError:
     import simplejson as json
+
+import yaml
 
 
 class ForemanInventory(object):
@@ -107,6 +110,15 @@ class ForemanInventory(object):
         self.foreman_user = config.get('foreman', 'user')
         self.foreman_pw = config.get('foreman', 'password')
         self.foreman_ssl_verify = config.getboolean('foreman', 'ssl_verify')
+        try:
+            self.foreman_prefix_json = config.get('foreman', 'prefix_json')
+        except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+            self.foreman_prefix_json = "# Foreman MIME type: text/json"
+        try:
+            self.foreman_prefix_yaml = config.get('foreman', 'prefix_yaml')
+        except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+            self.foreman_prefix_yaml = "# Foreman MIME type: text/yaml"
+        self.re_prefix = re.compile(u"^(%s|%s)(.*)" % (self.foreman_prefix_json, self.foreman_prefix_yaml), re.IGNORECASE | re.MULTILINE | re.DOTALL)
 
         # Ansible related
         try:
@@ -190,7 +202,26 @@ class ForemanInventory(object):
 
         for param in self._get_all_params_by_id(host['id']):
             name = param['name']
-            params[name] = param['value']
+            m = self.re_prefix.match(param['value'])
+            if m is None:
+                params[name] = param['value']
+            else:
+                if m.group(1) == self.foreman_prefix_yaml:
+                    try:
+                        params[name] = yaml.load(m.group(2))
+                    except yaml.YAMLError, exc:
+                        if hasattr(exc, 'problem_mark'):
+                            mark = exc.problem_mark
+                            print >> sys.stderr, "Error parsing %s at position: (%s:%s)" % (name, mark.line+1, mark.column+1)
+                        else:
+                            print >> sys.stderr, "Error parsing %s:\n%s" % (name, exc)
+                        params[name] = m.group(2)
+                elif m.group(1) == self.foreman_prefix_json:
+                    try:
+                        params[name] = json.loads(m.group(2))
+                    except ValueError, exc:
+                        print >> sys.stderr, "Error parsing %s:\n%s" % (name, exc)
+                        params[name] = m.group(2)
 
         return params
 
