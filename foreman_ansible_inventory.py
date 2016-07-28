@@ -68,11 +68,21 @@ class ForemanInventory(object):
         else:
             self.inventory['_meta'] = {'hostvars': {}}
             for hostname in self.cache:
-                self.inventory['_meta']['hostvars'][hostname] = {
-                    'foreman': self.cache[hostname],
-                    'foreman_params': self.params[hostname],
-                    'foreman_facts': self.facts[hostname],
-                }
+                self.inventory['_meta']['hostvars'][hostname] = {}
+                host_inv = self.inventory['_meta']['hostvars'][hostname]
+                if len(self.ansible_section_foreman):
+                    host_inv[self.ansible_section_foreman] = self.cache[hostname]
+                else:
+                    host_inv.update(self.cache[hostname])
+                if len(self.ansible_section_params):
+                    host_inv[self.ansible_section_params] = self.params[hostname]
+                else:
+                    host_inv.update(self.params[hostname])
+                if len(self.ansible_section_facts):
+                    host_inv[self.ansible_section_facts] = self.facts[hostname]
+                else:
+                    host_inv.update(self.facts[hostname])
+
             data_to_print += self.json_format_dict(self.inventory, True)
 
         print(data_to_print)
@@ -119,6 +129,20 @@ class ForemanInventory(object):
         except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
             self.foreman_prefix_yaml = "# Foreman MIME type: text/yaml"
         self.re_prefix = re.compile(u"^(%s|%s)(.*)" % (self.foreman_prefix_json, self.foreman_prefix_yaml), re.IGNORECASE | re.MULTILINE | re.DOTALL)
+
+        # Ansible inventory structure
+        try:
+            self.ansible_section_foreman = config.get('ansible', 'section_foreman')
+        except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+            self.ansible_section_foreman = "foreman"
+        try:
+            self.ansible_section_params = config.get('ansible', 'section_params')
+        except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+            self.ansible_section_params = "foreman_params"
+        try:
+            self.ansible_section_facts = config.get('ansible', 'section_facts')
+        except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+            self.ansible_section_facts = "foreman_facts"
 
         # Ansible related
         try:
