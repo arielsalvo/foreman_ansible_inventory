@@ -69,6 +69,17 @@ class ForemanInventory(object):
             for hostname in self.cache:
                 self.inventory['_meta']['hostvars'][hostname] = {}
                 host_inv = self.inventory['_meta']['hostvars'][hostname]
+                if "ansible_host" in self.params[hostname].keys():
+                    host_inv[self.ansible_host] = self.params[hostname]["ansible_host"]
+                else:
+                    host_inv[self.ansible_host] = self.cache[hostname]["ip"]
+
+                if "ansible_port" in self.params[hostname].keys():
+                    host_inv[self.ansible_port] = self.params[hostname]["ansible_port"]
+
+                if "ansible_user" in self.params[hostname].keys():
+                    host_inv[self.ansible_user] = self.params[hostname]["ansible_user"]
+
                 if len(self.ansible_section_foreman):
                     host_inv[self.ansible_section_foreman] = self.cache[hostname]
                 else:
@@ -150,6 +161,19 @@ class ForemanInventory(object):
             self.group_prefix = config.get('ansible', 'group_prefix')
         except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
             self.group_prefix = "foreman_"
+
+        try:
+            self.ansible_major_version = config.getint('ansible', 'major_version')
+        except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+            self.ansible_major_version = 2
+        if self.ansible_major_version < 2:
+            self.ansible_host = "ansible_ssh_host"
+            self.ansible_port = "ansible_ssh_port"
+            self.ansible_user = "ansible_ssh_user"
+        else:
+            self.ansible_host = "ansible_host"
+            self.ansible_port = "ansible_port"
+            self.ansible_user = "ansible_user"
 
         # Cache related
         try:
