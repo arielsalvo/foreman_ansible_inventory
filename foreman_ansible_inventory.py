@@ -67,17 +67,6 @@ class ForemanInventory(object):
             for hostname in self.cache:
                 self.inventory['_meta']['hostvars'][hostname] = {}
                 host_inv = self.inventory['_meta']['hostvars'][hostname]
-                if "ansible_host" in self.params[hostname].keys():
-                    host_inv[self.ansible_host] = self.params[hostname]["ansible_host"]
-                else:
-                    host_inv[self.ansible_host] = self.cache[hostname]["ip"]
-
-                if "ansible_port" in self.params[hostname].keys():
-                    host_inv[self.ansible_port] = self.params[hostname]["ansible_port"]
-
-                if "ansible_user" in self.params[hostname].keys():
-                    host_inv[self.ansible_user] = self.params[hostname]["ansible_user"]
-
                 if len(self.ansible_section_foreman):
                     host_inv[self.ansible_section_foreman] = self.cache[hostname]
                 else:
@@ -90,6 +79,17 @@ class ForemanInventory(object):
                     host_inv[self.ansible_section_facts] = self.facts[hostname]
                 else:
                     host_inv.update(self.facts[hostname])
+
+                if "ansible_host" in self.params[hostname].keys():
+                    host_inv[self.ansible_host] = self.params[hostname]["ansible_host"]
+                else:
+                    host_inv[self.ansible_host] = self.cache[hostname]["ip"]
+
+                if "ansible_port" in self.params[hostname].keys():
+                    host_inv[self.ansible_port] = self.params[hostname]["ansible_port"]
+
+                if "ansible_user" in self.params[hostname].keys():
+                    host_inv[self.ansible_user] = self.params[hostname]["ansible_user"]
 
             data_to_print += self.json_format_dict(self.inventory, True)
 
