@@ -82,11 +82,16 @@ class ForemanInventory(object):
 
                 if "ansible_host" in self.params[hostname].keys():
                     host_inv[self.ansible_host] = self.params[hostname]["ansible_host"]
+                elif hasattr(self, "foreman_default_net_param") and self.foreman_default_net_param in self.params[hostname].keys():
+                    if self.params[hostname][self.foreman_default_net_param] in self.facts[hostname].keys():
+                        host_inv[self.ansible_host] = self.facts[hostname][self.params[hostname][self.foreman_default_net_param]]
+                    else:
+                        host_inv[self.ansible_host] = self.cache[hostname]["ip"]
                 else:
                     host_inv[self.ansible_host] = self.cache[hostname]["ip"]
 
                 if "ansible_port" in self.params[hostname].keys():
-                    host_inv[self.ansible_port] = self.params[hostname]["ansible_port"]
+                    host_inv[self.ansible_port] = int(self.params[hostname]["ansible_port"])
 
                 if "ansible_user" in self.params[hostname].keys():
                     host_inv[self.ansible_user] = self.params[hostname]["ansible_user"]
@@ -128,6 +133,10 @@ class ForemanInventory(object):
         self.foreman_user = config.get('foreman', 'user')
         self.foreman_pw = config.get('foreman', 'password')
         self.foreman_ssl_verify = config.getboolean('foreman', 'ssl_verify')
+        try:
+            self.foreman_default_net_param = config.get('foreman', 'default_net_param')
+        except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+            pass
 
         # Ansible inventory structure
         try:
