@@ -69,17 +69,6 @@ class ForemanInventory(object):
             for hostname in self.cache:
                 self.inventory['_meta']['hostvars'][hostname] = {}
                 host_inv = self.inventory['_meta']['hostvars'][hostname]
-                if "ansible_host" in self.params[hostname].keys():
-                    host_inv[self.ansible_host] = self.params[hostname]["ansible_host"]
-                else:
-                    host_inv[self.ansible_host] = self.cache[hostname]["ip"]
-
-                if "ansible_port" in self.params[hostname].keys():
-                    host_inv[self.ansible_port] = self.params[hostname]["ansible_port"]
-
-                if "ansible_user" in self.params[hostname].keys():
-                    host_inv[self.ansible_user] = self.params[hostname]["ansible_user"]
-
                 if len(self.ansible_section_foreman):
                     host_inv[self.ansible_section_foreman] = self.cache[hostname]
                 else:
@@ -92,6 +81,22 @@ class ForemanInventory(object):
                     host_inv[self.ansible_section_facts] = self.facts[hostname]
                 else:
                     host_inv.update(self.facts[hostname])
+
+                if "ansible_host" in self.params[hostname].keys():
+                    host_inv[self.ansible_host] = self.params[hostname]["ansible_host"]
+                elif hasattr(self, "foreman_default_net_param") and self.foreman_default_net_param in self.params[hostname].keys():
+                    if self.params[hostname][self.foreman_default_net_param] in self.facts[hostname].keys():
+                        host_inv[self.ansible_host] = self.facts[hostname][self.params[hostname][self.foreman_default_net_param]]
+                    else:
+                        host_inv[self.ansible_host] = self.cache[hostname]["ip"]
+                else:
+                    host_inv[self.ansible_host] = self.cache[hostname]["ip"]
+
+                if "ansible_port" in self.params[hostname].keys():
+                    host_inv[self.ansible_port] = int(self.params[hostname]["ansible_port"])
+
+                if "ansible_user" in self.params[hostname].keys():
+                    host_inv[self.ansible_user] = self.params[hostname]["ansible_user"]
 
             data_to_print += self.json_format_dict(self.inventory, True)
 
@@ -134,6 +139,10 @@ class ForemanInventory(object):
             self.foreman_complextypes = config.getboolean('foreman', 'complex_types')
         except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
             self.foreman_complextypes = False
+        try:
+            self.foreman_default_net_param = config.get('foreman', 'default_net_param')
+        except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+            pass
 
         # Ansible inventory structure
         try:
